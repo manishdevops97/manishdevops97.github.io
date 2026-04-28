@@ -20,7 +20,7 @@
       background: #fff;
       padding: 20px;
       border-radius: 8px;
-      width: 300px;
+      width: 320px;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
 
@@ -38,13 +38,15 @@
       cursor: pointer;
     }
 
-    button:hover {
-      background: #0056b3;
+    button:disabled {
+      background: #999;
+      cursor: not-allowed;
     }
 
     .status {
       margin-top: 10px;
       font-size: 14px;
+      min-height: 20px;
     }
   </style>
 
@@ -58,21 +60,30 @@
   <form id="contactForm">
     <input type="text" id="subject" placeholder="Subject" required />
     <textarea id="message" placeholder="Message" required></textarea>
-    <button type="submit">Submit</button>
+    <button type="submit" id="submitBtn">Submit</button>
   </form>
 
   <div class="status" id="status"></div>
 </div>
 
 <script>
-document.getElementById("contactForm").addEventListener("submit", async (e) => {
+const form = document.getElementById("contactForm");
+const statusDiv = document.getElementById("status");
+const submitBtn = document.getElementById("submitBtn");
+
+form.addEventListener("submit", async (e) => {
   e.preventDefault();
 
-  const statusDiv = document.getElementById("status");
-  statusDiv.innerText = "Sending...";
+  const subject = document.getElementById("subject").value.trim();
+  const message = document.getElementById("message").value.trim();
 
-  const subject = document.getElementById("subject").value;
-  const message = document.getElementById("message").value;
+  if (!subject || !message) {
+    statusDiv.innerText = "❌ Please fill all fields";
+    return;
+  }
+
+  statusDiv.innerText = "Sending...";
+  submitBtn.disabled = true;
 
   try {
     const res = await fetch("https://crmmyuismcfhghie7q6ymcsj7u0gqmbq.lambda-url.ap-south-1.on.aws/", {
@@ -83,24 +94,29 @@ document.getElementById("contactForm").addEventListener("submit", async (e) => {
       body: JSON.stringify({ subject, message })
     });
 
-    const text = await res.text();
-
     let data;
+
     try {
-      data = JSON.parse(text);
+      data = await res.json();   // try direct JSON
     } catch {
+      const text = await res.text();  // fallback
       data = { message: text };
     }
 
+    console.log("Response:", data);
+
     if (res.ok) {
       statusDiv.innerText = "✅ " + (data.message || "Success");
+      form.reset();
     } else {
-      statusDiv.innerText = "❌ Error: " + (data.error || text);
+      statusDiv.innerText = "❌ " + (data.error || data.message || "Server Error");
     }
 
   } catch (error) {
-    console.error(error);
+    console.error("Network Error:", error);
     statusDiv.innerText = "❌ Network Error";
+  } finally {
+    submitBtn.disabled = false;
   }
 });
 </script>
