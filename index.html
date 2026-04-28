@@ -1,69 +1,125 @@
-import json
-import boto3
-import time
-from datetime import datetime
+<!DOCTYPE html>
 
-ses = boto3.client('ses', region_name='ap-south-1')
-dynamodb = boto3.resource('dynamodb', region_name='ap-south-1')
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contact Form</title>
 
-table = dynamodb.Table('ContactQueries')
-
-SENDER = "cloud.manishjangra97@gmail.com"
-RECEIVER = "aws-email@boxfi.uk"
-
-def lambda_handler(event, context):
-    try:
-        # 1. Parse request body safely
-        body = event.get('body', '{}')
-
-        # Handle case when body is already dict
-        if isinstance(body, str):
-            body = json.loads(body)
-
-        subject = body.get('subject', '')
-        message = body.get('message', '')
-
-        if not subject or not message:
-            return response(400, {"error": "Subject and Message required"})
-
-        # 2. Send Email via SES
-        ses.send_email(
-            Source=SENDER,
-            Destination={
-                'ToAddresses': [RECEIVER]
-            },
-            Message={
-                'Subject': {'Data': subject},
-                'Body': {'Text': {'Data': message}}
-            }
-        )
-
-        # 3. Store in DynamoDB
-        table.put_item(
-            Item={
-                'id': str(int(time.time() * 1000)),
-                'subject': subject,
-                'message': message,
-                'createdAt': datetime.utcnow().isoformat()
-            }
-        )
-
-        return response(200, {"message": "Email sent & stored successfully"})
-
-    except Exception as e:
-        print("ERROR:", str(e))  # CloudWatch logs
-        return response(500, {"error": str(e)})
-
-
-# 🔥 Common response formatter (VERY IMPORTANT)
-def response(status_code, body):
-    return {
-        "statusCode": status_code,
-        "headers": {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",   # CORS fix
-            "Access-Control-Allow-Headers": "*",
-            "Access-Control-Allow-Methods": "POST,OPTIONS"
-        },
-        "body": json.dumps(body)
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
     }
+
+    .container {
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      width: 320px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    input, textarea, button {
+      width: 100%;
+      margin-top: 10px;
+      padding: 10px;
+      font-size: 14px;
+    }
+
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      background: #999;
+      cursor: not-allowed;
+    }
+
+    .status {
+      margin-top: 10px;
+      font-size: 14px;
+      min-height: 20px;
+    }
+  </style>
+
+</head>
+
+<body>
+
+<div class="container">
+  <h3>Contact Form</h3>
+
+  <form id="contactForm">
+    <input type="text" id="subject" placeholder="Subject" required />
+    <textarea id="message" placeholder="Message" required></textarea>
+    <button type="submit" id="submitBtn">Submit</button>
+  </form>
+
+  <div class="status" id="status"></div>
+</div>
+
+<script>
+const form = document.getElementById("contactForm");
+const statusDiv = document.getElementById("status");
+const submitBtn = document.getElementById("submitBtn");
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const subject = document.getElementById("subject").value.trim();
+  const message = document.getElementById("message").value.trim();
+
+  if (!subject || !message) {
+    statusDiv.innerText = "❌ Please fill all fields";
+    return;
+  }
+
+  statusDiv.innerText = "Sending...";
+  submitBtn.disabled = true;
+
+  try {
+    const res = await fetch("https://crmmyuismcfhghie7q6ymcsj7u0gqmbq.lambda-url.ap-south-1.on.aws/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ subject, message })
+    });
+
+    let data;
+
+    try {
+      data = await res.json();
+    } catch {
+      const text = await res.text();
+      data = { message: text };
+    }
+
+    console.log("Response:", data);
+
+    if (res.ok) {
+      statusDiv.innerText = "✅ " + (data.message || "Success");
+      form.reset();
+    } else {
+      statusDiv.innerText = "❌ " + (data.error || data.message || "Server Error");
+    }
+
+  } catch (error) {
+    console.error("Network Error:", error);
+    statusDiv.innerText = "❌ Network Error";
+  } finally {
+    submitBtn.disabled = false;
+  }
+});
+</script>
+
+</body>
+</html>
