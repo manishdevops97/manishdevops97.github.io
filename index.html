@@ -1,0 +1,23 @@
+<form id="contactForm">
+  <input type="text" id="subject" placeholder="Subject" required />
+  <textarea id="message" placeholder="Message" required></textarea>
+  <button type="submit">Submit</button>
+</form>
+
+<script>
+document.getElementById("contactForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const subject = document.getElementById("subject").value;
+  const message = document.getElementById("message").value;
+
+  const res = await fetch("https://crmmyuismcfhghie7q6ymcsj7u0gqmbq.lambda-url.ap-south-1.on.aws/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ subject, message })
+  });
+
+  const data = await res.json();
+  alert(data.message);
+});
+</script>
