@@ -111,14 +111,7 @@ form.addEventListener("submit", async (e) => {
 
   const payload = {
     name: document.getElementById("name").value,
-    const rawDate = document.getElementById("date").value;
-
-function formatDateDDMMYYYY(dateStr) {
-  const [year, month, day] = dateStr.split("-");
-  return `${day}-${month}-${year}`;
-}
-
-const formattedDate = formatDateDDMMYYYY(rawDate);
+    date: document.getElementById("date").value,
     course: document.getElementById("course").value,
     status: document.getElementById("taskStatus").value,
     pendingMsg: document.getElementById("pendingMsg").value,
